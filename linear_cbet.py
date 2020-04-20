@@ -1,5 +1,5 @@
-from constants import *
-import mod_launch_ray as lr
+from linear_constants import *
+import linear_ray_launch as lr
 from plotter import plot_everything
 
 import numpy as np
@@ -172,7 +172,6 @@ Loop through the spatial grid (2:nx,2:nz) to find where the rays from opposite b
 The dimensions of the array are: marked( nx, nz, raynum, beamnum)
 // for raynum:  ss = 1; ss <= numstored; ++ss
 // for beamnum: bb = 1; bb <= nbeams; ++bb
-
 There will always be a beam #1, so start with beam 1 and check for rays present in the zone
 from other beams. Starting from beam #1, need to check for rays from beam #2, then #3, etc.
 After beam #1, need to start from beam #2 and check for rays from beam #3, then #4, etc.

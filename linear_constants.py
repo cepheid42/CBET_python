@@ -1,4 +1,19 @@
 from numpy import pi, linspace, exp, sqrt, float32
+from time import monotonic
+
+# Dictionary for tracking timing information
+start_time = monotonic()
+timers = {f'cat{n + 1:02}': 0.0 for n in range(12)}
+timers['start'] = start_time
+timers['elapsed'] = start_time
+timers['total'] = 0.0
+
+
+def elapsed_time(cat):
+    now = monotonic()
+    timers[cat] += now - timers['elapsed']
+    timers['elapsed'] = now
+
 
 ''' Define shape of ray space '''
 nx = 201
@@ -70,4 +85,4 @@ constant1 = (estat ** 2) / (4 * (1.0e3 * m_e) * c * omega * kb * Te * (1 + 3 * T
 
 cs = 1e2 * sqrt(e_c * (Z * Te_eV + 3.0 * Ti_eV) / mi_kg)
 
-# elapsed_time('cat02')
+elapsed_time('cat02')

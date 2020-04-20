@@ -1,18 +1,15 @@
 '''==========================================================================================
                         2D RAY LAUNCHER AND TRACKER FUNCTION
                         Professor A. B. Sefkow
-
 The essence of the routine is to enforce this governing equation:
 w^2 = wpe(x,z)^2 + c^2*(kx^2+kz^2),
 i.e. kx^2+kz^2 = c^-2*(w^2-wpe(x,z)^2),
 where vg = dw/dk = c^2*k/w = (c/w)*sqrt(omega^2-wpe(x,z)^2)
-
 And we update the ray positions (x) and group velocities (vg) according to
 d(x)/dt = vg, and
 d(vg)/dt = -c^2/2*(gradient(eden)/ncrit)
-
 ============================================================================================'''
-from constants import *
+from linear_constants import *
 import numpy as np
 
 class Ray_XZ:

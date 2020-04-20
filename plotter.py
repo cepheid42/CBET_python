@@ -39,7 +39,6 @@ def plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, va
     plt.show(block=False)
 
     plt.figure()
-
     clo = 0.0
     chi = npmax(intensity_sum)
     plt.pcolormesh(z, x, intensity_sum, cmap=cmap, vmin=clo, vmax=chi)
@@ -50,15 +49,12 @@ def plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, va
     plt.show(block=False)
 
     plt.figure()
-
     plt.pcolormesh(z, x, variable1, cmap=cmap, vmin=0.0, vmax=0.021)
     plt.colorbar()
     plt.xlabel('Z (cm)')
     plt.ylabel('X (cm)')
     plt.title('Total original field amplitude (a0)')
     plt.show(block=False)
-
-
 
     plt.figure()
     plt.pcolormesh(z, x, a0_variable, cmap=cmap, vmin=0.0, vmax=0.021)
@@ -86,4 +82,5 @@ def plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, va
     plt.ylabel('a0')
     plt.title('a0(z) at x_min, x_0, x_max')
     plt.grid(linestyle='--')
+    # plt.show()
     plt.show(block=False)
