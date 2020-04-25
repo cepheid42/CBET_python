@@ -47,7 +47,7 @@ if rank == 0:
     for xx in range(nx):
         z[xx, :] = np.linspace(zmin, zmax, nz, dtype=np.float32)
 
-    print('More initialization...')
+    # print('More initialization...')
 
     for xx in range(nx):
         for zz in range(nz):
@@ -62,8 +62,8 @@ if rank == 0:
     dedendz[:, nz - 1] = dedendz[:, nz - 2]  # sets last column equal to second to last column
     dedendx[nx - 1, :] = dedendz[nx - 2, :]  # sets last row equal to second to last row
 
-    print('Setting initial conditions for ray tracker')
-    print('nrays per beam is ', nrays)
+    # print('Setting initial conditions for ray tracker')
+    # print('nrays per beam is ', nrays)
 
 comm.Bcast(x, root=0)
 comm.Bcast(z, root=0)
@@ -83,7 +83,7 @@ kz0 = np.zeros(nrays, dtype=np.float32, order='F')
 uray_mult = intensity * courant_mult * rays_per_zone**-1.0
 wpe = np.sqrt(eden * 1e6 * e_c ** 2.0 / (m_e * e_0))
 
-print("Tracking Rays...")
+# print("Tracking Rays...")
 
 if rank == 0:
     x0[:] = xmin - (dt / courant_mult * c * 0.5)
@@ -92,7 +92,7 @@ if rank == 0:
     kx0[:nrays] = np.float32(1.0)
     kz0[:nrays] = np.float32(-0.1)
 
-    print('BEAMNUM is ', rank + 1)
+    # print('BEAMNUM is ', rank + 1)
     for n in range(nrays):  # loop over rays
         uray[0] = uray_mult * np.interp(z0[n], phase_x + offset, pow_x)  # determines initial power weighting
 
@@ -108,8 +108,8 @@ if rank == 0:
         loc_savedx[:finalt, n] = rayx
         loc_savedz[:finalt, n] = rayz
 
-        if n % 20 == 0:
-            print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
+        # if n % 20 == 0:
+        #     print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
 
 if rank == 1:
     x0[:] = np.linspace(beam_min_z, beam_max_z, nrays, dtype=np.float32) - (dx / 2) - (dt / courant_mult * c * 0.5)
@@ -118,7 +118,7 @@ if rank == 1:
     kx0[:nrays] = np.float32(0.0)
     kz0[:nrays] = np.float32(1.0)
 
-    print('BEAMNUM is ', rank + 1)
+    # print('BEAMNUM is ', rank + 1)
     for n in range(nrays):  # loop over rays
         uray[0] = uray_mult * np.interp(x0[n], phase_x, pow_x)  # determines initial power weighting
 
@@ -134,8 +134,8 @@ if rank == 1:
         loc_savedx[:finalt, n] = rayx
         loc_savedz[:finalt, n] = rayz
 
-        if n % 20 == 0:
-            print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
+        # if n % 20 == 0:
+        #     print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
 
 if rank == 1:
     comm.Send(loc_crosses_x, dest=0, tag=15)
@@ -199,7 +199,9 @@ comm.Bcast(present, root=0)
 i_b1 = np.copy(edep[:nx, :nz, 0], order='F')
 i_b2 = np.copy(edep[:nx, :nz, 1], order='F')
 
-print("Finding ray intersections with rays from opposing beams.")
+# if rank == 0:
+#     print("Finding ray intersections with rays from opposing beams.")
+
 intersections = np.zeros((nx, nz), dtype=np.float32, order='F')
 
 if rank == 0:
@@ -218,8 +220,8 @@ if rank == 0:
 
 comm.Bcast(intersections, root=0)
 
-if rank == 0:
-    print('Calculating CBET gains...')
+# if rank == 0:
+#     print('Calculating CBET gains...')
 
 
 dkx = crosses_x[:, :, 1:] - crosses_x[:, :, :-1]
@@ -232,212 +234,226 @@ W2 = np.sqrt(1 - eden / ncrit) / rays_per_zone
 
 W1_init = np.copy(W1, order='F')
 W1_new = np.copy(W1_init, order='F')
+
 W2_init = np.copy(W2, order='F')
 W2_new = np.copy(W2_init, order='F')
 
-W1_storage = np.zeros((nx, nz, numstored), dtype=np.float32, order='F')
-W2_storage = np.zeros((nx, nz, numstored), dtype=np.float32, order='F')
+for bb in range(nbeams - 1):
+    ''' rr1 loop is done cyclicly by all processes
+        so 2 processes will calculate every other loop'''
+    for rr1 in range(rank, nrays, size):
+        for cc1 in range(ncrossings):
+            if boxes[bb, rr1, cc1, 0] == 0 or boxes[bb, rr1, cc1, 1] == 0:
+                break
+
+            ix = boxes[bb, rr1, cc1, 0]
+            iz = boxes[bb, rr1, cc1, 1]
+
+            if intersections[ix, iz] != 0:
+                nonzeros1 = marked[ix, iz, :, 0].nonzero()
+                numrays1 = np.count_nonzero(marked[ix, iz, :, 0])
+
+                nonzeros2 = marked[ix, iz, :, 1].nonzero()
+                numrays2 = np.count_nonzero(marked[ix, iz, :, 1])
+
+                marker1 = marked[ix, iz, nonzeros1, 0].flatten()
+                marker2 = marked[ix, iz, nonzeros2, 1].flatten()
+
+                rr2 = marker2
+                cc2 = marker2
+
+                for rrr in range(numrays1):
+                    if marker1[rrr] == rr1:
+                        ray1num = rrr
+                        break
+
+                for n2 in range(numrays2):
+                    for ccc in range(ncrossings):
+                        ix2 = boxes[bb + 1, rr2[n2], ccc, 0]
+                        iz2 = boxes[bb + 1, rr2[n2], ccc, 1]
+                        if ix == ix2 and iz == iz2:
+                            cc2[n2] = ccc
+                            break
+
+                n2limit = int(min(present[ix, iz, 0], numrays2))
+
+
+                for n2 in range(n2limit):
+                    ne = eden[ix, iz]
+                    epsilon = 1.0 - ne / ncrit
+                    kmag = (omega / c) * np.sqrt(epsilon)  # magnitude of wavevector
+
+                    kx1 = kmag * (dkx[bb, rr1, cc1] / (dkmag[bb, rr1, cc1] + 1.0e-10))
+                    kx2 = kmag * (dkx[bb + 1, rr2[n2], cc2[n2]] / (dkmag[bb + 1, rr2[n2], cc2[n2]] + 1.0e-10))
+
+                    kz1 = kmag * (dkz[bb, rr1, cc1] / (dkmag[bb, rr1, cc1] + 1.0e-10))
+                    kz2 = kmag * (dkz[bb + 1, rr2[n2], cc2[n2]] / (dkmag[bb + 1, rr2[n2], cc2[n2]] + 1.0e-10))
+
+                    kiaw = np.sqrt((kx2 - kx1) ** 2 + (kz2 - kz1) ** 2)  # magnitude of the difference between the two vectors
+                    ws = kiaw * cs  # acoustic frequency, cs is a constant
+                    omega1 = omega
+                    omega2 = omega  # laser frequency difference. zero to start
+
+                    eta = ((omega2 - omega1) - (kx2 - kx1) * u_flow[ix, iz]) / (ws + 1.0e-10)
+
+                    efield1 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b1[ix, iz] / c)  # initial electric field of ray
+                    efield2 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b2[ix, iz] / c)  # initial electric field of ray
+
+                    P = (iaw ** 2 * eta) / ((eta ** 2 - 1.0) ** 2 + iaw ** 2 * eta ** 2)  # from Russ's paper
+                    gain1 = constant1 * efield2 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
+                    gain2 = constant1 * efield1 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
+
+                    if dkmag[bb + 1, rr2[n2], cc2[n2]] >= 1.0 * dx:
+                        W2_new_ix_iz = W2[ix, iz] * np.exp(-1 * W1[ix, iz] * dkmag[bb + 1, rr2[n2], cc2[n2]] * gain2 / np.sqrt(epsilon))
+                        W1_new_ix_iz = W1[ix, iz] * np.exp(1 * W2[ix, iz] * dkmag[bb, rr1, cc1] * gain2 / np.sqrt(epsilon))
+
+                        if rank != 0:
+                            comm.send(ix, dest=0, tag=10)
+                            comm.send(iz, dest=0, tag=11)
+                            comm.send(W2_new_ix_iz, dest=0, tag=12)
+                            comm.send(W1_new_ix_iz, dest=0, tag=13)
+                        else:
+                            W2_new[ix, iz] = W2_new_ix_iz
+                            W1_new[ix, iz] = W1_new_ix_iz
+
+                            for r in range(1, size):
+                                other_ix = comm.recv(source=r, tag=10)
+                                other_iz = comm.recv(source=r, tag=11)
+                                W2_new[other_ix, other_iz] = comm.recv(source=r, tag=12)
+                                W1_new[other_ix, other_iz] = comm.recv(source=r, tag=13)
+
+        # if rank == 0 and rr1 % 20 == 0:
+        #     print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
+
+comm.Bcast(W1_new, root=0)
+comm.Bcast(W2_new, root=0)
+
+# print("Updating intensities due to CBET gains...")
+
+i_b1_new = np.copy(i_b1, order='F')
+i_b2_new = np.copy(i_b2, order='F')
 
 for bb in range(nbeams - 1):
-    for rr1 in range(nrays):
+    ''' rr1 loop is done cyclicly by all processes
+        so 2 processes will calculate every other loop'''
+
+    for rr1 in range(rank, nrays, size):
         for cc1 in range(ncrossings):
-            if rank == 0:
-                if boxes[bb, rr1, cc1, 0] == 0 or boxes[bb, rr1, cc1, 1] == 0:
-                    break
+            if boxes[bb, rr1, cc1, 0] == 0 or boxes[bb, rr1, cc1, 1] == 0:
+                break
+            ix = boxes[bb, rr1, cc1, 0]
+            iz = boxes[bb, rr1, cc1, 1]
 
-                ix = boxes[bb, rr1, cc1, 0]
-                iz = boxes[bb, rr1, cc1, 1]
+            if intersections[ix, iz] != 0:
+                nonzeros1 = marked[ix, iz, :, 0].nonzero()
+                numrays1 = np.count_nonzero(marked[ix, iz, :, 0])
 
-                if intersections[ix, iz] != 0:
-                    nonzeros1 = marked[ix, iz, :, 0].nonzero()
-                    numrays1 = np.count_nonzero(marked[ix, iz, :, 0])
+                nonzeros2 = marked[ix, iz, :, 1].nonzero()
+                numrays2 = np.count_nonzero(marked[ix, iz, :, 1])
 
-                    nonzeros2 = marked[ix, iz, :, 1].nonzero()
-                    numrays2 = np.count_nonzero(marked[ix, iz, :, 1])
+                marker1 = marked[ix, iz, nonzeros1, 0].flatten()
+                marker2 = marked[ix, iz, nonzeros2, 1].flatten()
 
-                    marker1 = marked[ix, iz, nonzeros1, 0].flatten()
-                    marker2 = marked[ix, iz, nonzeros2, 1].flatten()
+                rr2 = marker2
+                cc2 = marker2
 
-                    rr2 = marker2
-                    cc2 = marker2
+                for rrr in range(numrays1):
+                    if marker1[rrr] == rr1:
+                        ray1num = rrr
+                        break
 
-                    for rrr in range(numrays1):
-                        if marker1[rrr] == rr1:
-                            ray1num = rrr
+                for n2 in range(numrays2):
+                    for ccc in range(ncrossings):
+                        ix2 = boxes[bb + 1, rr2[n2], ccc, 0]
+                        iz2 = boxes[bb + 1, rr2[n2], ccc, 1]
+                        if ix == ix2 and iz == iz2:
+                            cc2[n2] = ccc
                             break
 
-                    for n2 in range(numrays2):
-                        for ccc in range(ncrossings):
-                            ix2 = boxes[bb + 1, rr2[n2], ccc, 0]
-                            iz2 = boxes[bb + 1, rr2[n2], ccc, 1]
-                            if ix == ix2 and iz == iz2:
-                                cc2[n2] = ccc
-                                break
+                fractional_change_1 = -1.0 * (1.0 - (W1_new[ix, iz] / W1_init[ix, iz])) * i_b1[ix, iz]
+                fractional_change_2 = -1.0 * (1.0 - (W2_new[ix, iz] / W2_init[ix, iz])) * i_b2[ix, iz]
 
-                    rr2_shape = rr2.shape
-                    cc2_shape = cc2.shape
-                    for rank in range(1, size):
-                        comm.send(rr2_shape, dest=rank, tag=11)
-                        comm.send(cc2_shape, dest=rank, tag=12)
-                        # comm.send(ray1num, dest=rank, tag=13)
-
-                    n2limit = int(min(present[ix, iz, 0], numrays2))
-            else:
-                n2limit = None
-                # ray1num = None
-                ix = None
-                iz = None
-                rr2_shape = comm.recv(source=0, tag=11)
-                cc2_shape = comm.recv(source=0, tag=12)
-
-                rr2 = np.empty(rr2_shape)
-                cc2 = np.empty(cc2_shape)
-
-            comm.Bcast(rr2, root=0)
-            comm.Bcast(cc2, root=0)
-
-            comm.bcast(n2limit, root=0)
-            comm.bcast(ix, root=0)
-            comm.bcast(iz, root=0)
-            # comm.bcast(ray1num, root=0)
-
-            for n2 in range(rank, n2limit, size):
-                ne = eden[ix, iz]
-                epsilon = 1.0 - ne / ncrit
-                kmag = (omega / c) * np.sqrt(epsilon)  # magnitude of wavevector
-
-                kx1 = kmag * (dkx[bb, rr1, cc1] / (dkmag[bb, rr1, cc1] + 1.0e-10))
-                kx2 = kmag * (dkx[bb + 1, rr2[n2], cc2[n2]] / (dkmag[bb + 1, rr2[n2], cc2[n2]] + 1.0e-10))
-
-                kz1 = kmag * (dkz[bb, rr1, cc1] / (dkmag[bb, rr1, cc1] + 1.0e-10))
-                kz2 = kmag * (dkz[bb + 1, rr2[n2], cc2[n2]] / (dkmag[bb + 1, rr2[n2], cc2[n2]] + 1.0e-10))
-
-                kiaw = np.sqrt((kx2 - kx1) ** 2 + (kz2 - kz1) ** 2)  # magnitude of the difference between the two vectors
-                ws = kiaw * cs  # acoustic frequency, cs is a constant
-                omega1 = omega
-                omega2 = omega  # laser frequency difference. zero to start
-
-                eta = ((omega2 - omega1) - (kx2 - kx1) * u_flow[ix, iz]) / (ws + 1.0e-10)
-
-                efield1 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b1[ix, iz] / c)  # initial electric field of ray
-                efield2 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b2[ix, iz] / c)  # initial electric field of ray
-
-                P = (iaw ** 2 * eta) / ((eta ** 2 - 1.0) ** 2 + iaw ** 2 * eta ** 2)  # from Russ's paper
-                gain1 = constant1 * efield2 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
-                gain2 = constant1 * efield1 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
-
-                if dkmag[bb + 1, rr2[n2], cc2[n2]] >= 1.0 * dx:
-                    W2_new_ix_iz = W2[ix, iz] * np.exp(-1 * W1[ix, iz] * dkmag[bb + 1, rr2[n2], cc2[n2]] * gain2 / np.sqrt(epsilon))
-                    W1_new_ix_iz = W1[ix, iz] * np.exp(1 * W2[ix, iz] * dkmag[bb, rr1, cc1] * gain2 / np.sqrt(epsilon))
-
-                    if rank != 0:
-                        comm.send(n2, dest=0, tag=10)
-                        comm.send(W2_new_ix_iz, dest=0, tag=12)
-                        comm.send(W1_new_ix_iz, dest=0, tag=13)
-                    else:
-                        for r in range(1, size):
-                            index = comm.recv(source=r, tag=10)
-                            temp1 = comm.recv(source=r, tag=12)
-                            W2_storage[ix, iz, index] = temp1
-
-                            temp2 = comm.recv(source=r, tag=13)
-                            W1_storage[ix, iz, ray1num] = temp2
-
-
-        if rr1 % 20 == 0:
-            print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
-
-if rank == 0:
-    print("Updating intensities due to CBET gains...")
-
-    i_b1_new = np.copy(i_b1, order='F')
-    i_b2_new = np.copy(i_b2, order='F')
-
-    for bb in range(nbeams - 1):
-        for rr1 in range(nrays):
-            for cc1 in range(ncrossings):
-                if boxes[bb, rr1, cc1, 0] == 0 or boxes[bb, rr1, cc1, 1] == 0:
-                    break
-                ix = boxes[bb, rr1, cc1, 0]
-                iz = boxes[bb, rr1, cc1, 1]
-
-                if intersections[ix, iz] != 0:
-                    nonzeros1 = marked[ix, iz, :, 0].nonzero()
-                    numrays1 = np.count_nonzero(marked[ix, iz, :, 0])
-
-                    nonzeros2 = marked[ix, iz, :, 1].nonzero()
-                    numrays2 = np.count_nonzero(marked[ix, iz, :, 1])
-
-                    marker1 = marked[ix, iz, nonzeros1, 0].flatten()
-                    marker2 = marked[ix, iz, nonzeros2, 1].flatten()
-
-                    rr2 = marker2
-                    cc2 = marker2
-
-                    for rrr in range(numrays1):
-                        if marker1[rrr] == rr1:
-                            ray1num = rrr
-                            break
-
-                    for n2 in range(numrays2):
-                        for ccc in range(ncrossings):
-                            ix2 = boxes[bb + 1, rr2[n2], ccc, 0]
-                            iz2 = boxes[bb + 1, rr2[n2], ccc, 1]
-                            if ix == ix2 and iz == iz2:
-                                cc2[n2] = ccc
-                                break
-
-                    fractional_change_1 = -1.0 * (1.0 - (W1_new[ix, iz] / W1_init[ix, iz])) * i_b1[ix, iz]
-                    fractional_change_2 = -1.0 * (1.0 - (W2_new[ix, iz] / W2_init[ix, iz])) * i_b2[ix, iz]
-
+                if rank != 0:
+                    comm.send(ix, dest=0, tag=10)
+                    comm.send(iz, dest=0, tag=11)
+                    comm.send(fractional_change_1, dest=0, tag=12)
+                    comm.send(fractional_change_2, dest=0, tag=13)
+                else:
                     i_b1_new[ix, iz] += fractional_change_1
                     i_b2_new[ix, iz] += fractional_change_2
+                    for r in range(1, size):
+                        other_ix = comm.recv(source=r, tag=10)
+                        other_iz = comm.recv(source=r, tag=11)
+                        i_b1_new[other_ix, other_iz] += comm.recv(source=r, tag=12)
+                        i_b2_new[other_ix, other_iz] += comm.recv(source=r, tag=13)
 
-                    x_prev_1 = x[ix, iz]
-                    z_prev_1 = z[ix, iz]
+                x_prev_1 = x[ix, iz]
+                z_prev_1 = z[ix, iz]
 
-                    x_prev_2 = x[ix, iz]
-                    z_prev_2 = z[ix, iz]
+                x_prev_2 = x[ix, iz]
+                z_prev_2 = z[ix, iz]
 
-                    # Now we need to find and increment/decrement the fractional_change for the rest of the beam 1 ray
-                    for ccc in range(cc1 + 1, ncrossings):
-                        ix_next_1 = boxes[0, rr1, ccc, 0]
-                        iz_next_1 = boxes[0, rr1, ccc, 1]
+                # Now we need to find and increment/decrement the fractional_change for the rest of the beam 1 ray
+                for ccc in range(cc1 + 1, ncrossings):
+                    ix_next_1 = boxes[0, rr1, ccc, 0]
+                    iz_next_1 = boxes[0, rr1, ccc, 1]
 
-                        x_curr_1 = x[ix_next_1, iz_next_1]
-                        z_curr_1 = z[ix_next_1, iz_next_1]
+                    x_curr_1 = x[ix_next_1, iz_next_1]
+                    z_curr_1 = z[ix_next_1, iz_next_1]
 
-                        if ix_next_1 == 0 or iz_next_1 == 0:
-                            break
-                        else:
-                            # Avoid double deposition if the (x,z) location doesn't change with incremented crossing number
-                            if x_curr_1 != x_prev_1 or z_curr_1 != z_prev_1:
-                                i_b1_new[ix_next_1, iz_next_1] += fractional_change_1 * (present[ix, iz, 0] / present[ix_next_1, iz_next_1, 0])
+                    if ix_next_1 == 0 or iz_next_1 == 0:
+                        break
+                    else:
+                        # Avoid double deposition if the (x,z) location doesn't change with incremented crossing number
+                        if x_curr_1 != x_prev_1 or z_curr_1 != z_prev_1:
+                            new_val = fractional_change_1 * (present[ix, iz, 0] / present[ix_next_1, iz_next_1, 0])
+                            if rank != 0:
+                                comm.send(ix_next_1, dest=0, tag=10)
+                                comm.send(iz_next_1, dest=0, tag=11)
+                                comm.send(new_val, dest=0, tag=12)
+                            else:
+                                i_b1_new[ix_next_1, iz_next_1] += new_val
+                                for r in range(1, size):
+                                    other_ix = comm.recv(source=r, tag=10)
+                                    other_iz = comm.recv(source=r, tag=11)
+                                    other_new_val = comm.recv(source=r, tag=12)
+                                    i_b1_new[other_ix, other_iz] += other_new_val
 
-                            x_prev_1 = x_curr_1
-                            z_prev_1 = z_curr_1
+                        x_prev_1 = x_curr_1
+                        z_prev_1 = z_curr_1
 
-                    n2 = min(ray1num, numrays2)
+                n2 = min(ray1num, numrays2)
 
-                    for ccc in range(cc2[n2] + 1, ncrossings):
-                        ix_next_2 = boxes[1, rr2[n2], ccc, 0]
-                        iz_next_2 = boxes[1, rr2[n2], ccc, 1]
+                for ccc in range(cc2[n2] + 1, ncrossings):
+                    ix_next_2 = boxes[1, rr2[n2], ccc, 0]
+                    iz_next_2 = boxes[1, rr2[n2], ccc, 1]
 
-                        x_curr_2 = x[ix_next_2, iz_next_2]
-                        z_curr_2 = z[ix_next_2, iz_next_2]
+                    x_curr_2 = x[ix_next_2, iz_next_2]
+                    z_curr_2 = z[ix_next_2, iz_next_2]
 
-                        if ix_next_2 == 0 or iz_next_2 == 0:
-                            break
-                        else:
-                            if x_curr_2 != x_prev_2 or z_curr_2 != z_prev_2:
-                                i_b2_new[ix_next_2, iz_next_2] += fractional_change_2 * (present[ix, iz, 0] / present[ix_next_2, iz_next_2, 1])
+                    if ix_next_2 == 0 or iz_next_2 == 0:
+                        break
+                    else:
+                        if x_curr_2 != x_prev_2 or z_curr_2 != z_prev_2:
+                            new_val = fractional_change_2 * (present[ix, iz, 0] / present[ix_next_2, iz_next_2, 1])
+                            if rank != 0:
+                                comm.send(ix_next_2, dest=0, tag=10)
+                                comm.send(iz_next_2, dest=0, tag=11)
+                                comm.send(new_val, dest=0, tag=12)
+                            else:
+                                i_b2_new[ix_next_2, iz_next_2] += new_val
+                                for r in range(1, size):
+                                    other_ix = comm.recv(source=r, tag=10)
+                                    other_iz = comm.recv(source=r, tag=11)
+                                    other_new_val = comm.recv(source=r, tag=12)
+                                    i_b2_new[other_ix, other_iz] += other_new_val
+                        x_prev_2 = x_curr_2
+                        z_prev_2 = z_curr_2
 
-                            x_prev_2 = x_curr_2
-                            z_prev_2 = z_curr_2
-            if rr1 % 20 == 0:
-                print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
+        # if rank == 0 and rr1 % 20 == 0:
+        #     print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
 
-
+if rank == 0:
     intensity_sum = np.sum(edep[:nx, :nz, :], axis=2)
     variable1 = 8.53e-10 * np.sqrt(i_b1 + i_b2 + 1.0e-10) * (1.053 / 3.0)
     i_b1_new[i_b1_new < 1.0e-10] = 1.0e-10

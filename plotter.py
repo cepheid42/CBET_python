@@ -2,11 +2,9 @@ import matplotlib.pyplot as plt
 from constants import *
 from numpy import max as npmax
 
-cmap = 'jet'
-''' plot electron density profile normalized to ncrit '''
 def plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, variable1, a0_variable):
+    cmap = 'jet'
     plt.figure()
-
     plt.pcolormesh(z, x, eden / ncrit, cmap=cmap)
     plt.plot(z - (dz / 2), x - (dx / 2), 'k--')
     plt.plot(x - (dx / 2), z - (dz / 2), 'k--')
@@ -82,5 +80,4 @@ def plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, va
     plt.ylabel('a0')
     plt.title('a0(z) at x_min, x_0, x_max')
     plt.grid(linestyle='--')
-    # plt.show()
     plt.show(block=False)

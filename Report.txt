@@ -1,0 +1,124 @@
+Introduction
+    The Cross Beam Energy Transfer code was originally written in Yorick, which is a C-based scripted language
+    developed by David Munroe. Yorick has many interesting features such as array syntax, vectorization, column major ordering.
+
+    The CBET code has four main parts. The first is initialization, which is where all the required arrays are created at the
+    beginning of the code. The CBET code utilizes a global namespace, so the arrays created are available everywhere in the
+    code without having to be passed as a parameter.
+
+    The second part is the Beam Launch section. This is where the "ray_launch" function is called in a for loop over the "nrays"
+    value. The two beams have their own loops, so their is no streamlining of the functions.
+
+    The third part is the "ray_launch" function. This function does all of the work for tracing the rays initial path across
+    the mesh grid by iterating over nt time steps and updating the necessary arrays.
+
+    Last, is the CBET gain calculation, where each ray is checked for where is crosses another ray in the mesh grid.
+    This part consists of two loops, the first of which calculates the energy gain of each ray as it intersects other rays.
+    The second loop, takes these new energy values and updates the intensities of the rays.
+
+    The first step was to port the code from Yorick into Python. The reason for this was two fold. First was that Yorick
+    appears to be at the end-of-life, and is no longer recieving updates. The second reason is that Python keeps the scripting
+    ability of Yorick, while adding access to modern libraries such as CUDA, MPI, and openMP.
+
+    Yorick is fairly close to Python in syntax, however it includes many custom functions that have no direct analog in Python.
+    To remedy this, the Numpy library was used, as it incorporates many of the array elements found in Yorick, along with
+    optimizations for working on these arrays.
+
+    There were many challenges in porting the code into Python. Many of which stem from issues like Yorick's one-based arrays,
+    and it's column major ordering, which is not standard in Python/Numpy. In order to mimic the Yorick code as closely as possible,
+    all the Numpy arrays were created using Fortran ordering (order='F'), which treats the arrays as column major ordered. This allowed
+    the code to be used without having to change loop structures or modifying the layout of the matrices themselves. It did
+    make an issue of certain parts of the code, which utilize special language features. For example, when accessing a yorick
+    array with an index of 0, the last element of the array is retrieved. Indexing with a -1 returns the second to last.
+    Python on the other hand, since it has zero based arrays, returns the last element when sliced with a -1 index.
+
+Experiments
+   The first step in the process was to transcribe the code from Yorick to Python. Initially, I thought to utilize Pytorch
+   instead of numpy. The reason for this was Pytorch functions much like Numpy in regards to arrays, with the added benefit
+   of also having built-in GPU functionality.  Although much of the code was initially written with the Pytorch library,
+   further reading revealed that only Pytorch "Model" objects (used for machine learning algorithms, which Pytorch is designed for)
+   could be passed through to the GPU. Focus was then moved to implementing the code in it's entirety using only numpy,
+   in order to recreate the code as faithfully as possible. This choice was two part, one was to get a baseline comparison
+   between the speed of Yorick and the speed of Python, while the second was because the MPI and CUDA libraries also directly
+   supported numpy arrays, making it an easy choice.
+
+   After getting the Python code working, I attempted to see if I could utilize GPU's through the Python CUDA libray PyCUDA.
+   However, this was quickly shown to be beyond the scope of the code. PyCUDA wraps the C/C++ level CUDA libraries with an interface,
+   however, the CUDA Kernel is still required to be written in C. Since the whole purpose of the project was to move away from
+   C into more modern language support, PyCUDA was obviously not the desired way to proceed.
+
+   Instead, attention was turned to the Numba library. Numba works natively with Numpy arrays and utilizes a Just In Time (JIT)
+   compiler in order to achieve computational speed increases. It also can send the JIT compiled code to a GPU through the
+   CUDA API. However, after much experimentation, it became obvious that the code would have to be rewritten from
+   scratch in order to take advantage of the Numba library. The original code was written in a sequential manner, and while some
+   modifications were made in order to make it work in Python, the code was designed to be as close as possible to the original code.
+
+   Since implementing CUDA would require a large redesign of the code, it was put aside in favor of implementing message passing
+   instead.
+
+   Python's MPI library, MPI4PY, is a C based library with a Python interface. All initialization for MPI is done during the import
+   call at the top of the code. Then, only two commands are needed, first is setting the communication environment using the call
+
+   comm = MPI.COMM_WORLD
+
+   and the second is configuring the rank of the process with the call
+
+   rank = comm.Get_rank()
+
+   The size of the comm is also used, although not required. This gives the total number of processed active in the MPI
+   system, determined by the command line arguments given at runtime. The code was then refactored to allow multiple processes
+   to run the code and achieve parallelism.
+
+   First, which parts that would benefit most from parallelism needed to be established. The original Yorick code presented the
+   easiest method for determing this, as the code had timers integrated into the code to determine the time each section of code
+   ran for.
+
+                       Timing Category     CPU sec  System sec    Wall sec
+                           Data import       0.000       0.000       0.000
+                        Initialization       0.127       0.024       0.151
+              Initial ray index search       0.049       0.002       0.051
+          Index search in ray timeloop       4.343       0.266       4.607
+                              Ray push       4.297       0.263       4.563
+        Mapping ray traj's to grid cat08       9.398       0.574       9.997
+        Mapping ray traj's to grid cat12       2.914       0.178       3.068
+          Interpolation for deposition       4.729       0.289       5.021
+                         RAY LOOPS SUM      22.816       1.393      24.240
+                 Finding intersections       0.313       0.000       0.313
+              Plotting ray information       0.004       0.000       0.004
+                CBET gain calculations     116.711       0.008     116.752
+                             Others...       0.000      -0.000       0.000
+                                 TOTAL     142.885       1.604     144.529
+
+   The above output shows that for the original Yorick code, the two slowest section of code were the "Ray Loop Sum" and the
+   "CBET Gain calculations". The ray loop sum was the section of code which launched the rays for each beam, and computed the location
+   of each ray in the mesh grid. The CBET gain calculation was the two loops that updated the energy transfer between rays and
+   then updated the intensity of each ray.
+
+   Unfortunately, the timers used in Yorick are built-in functions, and I was not able to implement an equivalent function correctly
+   in Python with MPI. Instead, the Python code is timed as a whole, from start to finish.
+
+   The first section then utilized the Broadcast function in order to give each process a copy of the mesh grid and some
+   needed arrays that had been calculated at Rank 0. This, in principle, guaranteed that each process was working on the same
+   mesh grid while only having to calculate it once.
+
+   I then implemented MPI on was the Ray launch loops. Since the code was designed to find the interaction between
+   two beams, it was fairly straight forward to implement MPI on the two seperate ray loops. The first two processes, rank 0 and rank 1,
+   would represent the two beams, and perform the ray launching and tracing calculations.
+
+   This method required a great deal of fiddling in order to work correctly. The biggest issue was the ray loops made updates
+   to several arrays during the process as well as returning three elements, the final timestep at which the ray passed out of
+   range, and then the X and Z coordinates as vectors. These had to be collected and returned to the root process (rank 0)
+   in order to be used later for the CBET updates. However, the way the gather functions for MPI4PY worked, it was not straight
+   forward to just use Gather to retrieve all the updated arrays. Instead, the easiest solution required the creation of
+   local array versions of all the parts that were modified in place by the process. Then after the two loops had concluded,
+   Rank 1 used the send function to update the arrays of Rank 0. These arrays were then re-broadcasted to each process,
+   as they were required for the next step.
+
+   The CBET gain calculation loop were fairly simple to use with MPI, due to the fact that there were almost no loop dependencies
+   in any of the nested loops. This allowed for multiple processes to be utilized to calculate the CBET Gain, where each
+   process would calculate one iteration of the loop, and send the values back to Rank 0.
+
+   The loops were nested in the order (Beams - 1) -> Rays -> Crossings, where crossings is the maximum number of potential grid
+   crossings by a ray (set in the initialization parameters). Since the beams loop was actually negligible (since Beams - 1 = 1,
+   the loop was only iterate once), the Rays loop was set up so each process began iterating at its rank, so rank 0 would
+   calculate the 0th iteration, rank 1 the 1st iteration, and so forth in steps of SIZE, which is the total number of processes.

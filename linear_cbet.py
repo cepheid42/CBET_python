@@ -1,9 +1,8 @@
 from linear_constants import *
 import linear_ray_launch as lr
-from plotter import plot_everything
+# from plotter import plot_everything
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Define 2D arrays that will store data for electron density, derivatives of e_den, and x/z
 dedendz = np.zeros((nx, nz), dtype=np.float32, order='F')    # Backwards, because it is transposed later
@@ -25,7 +24,7 @@ for xx in range(nx):
     z[xx, :] = np.linspace(zmin, zmax, nz, dtype=np.float32)
 
 
-print('More initialization...')
+# print('More initialization...')
 
 ''' Calculate the electron density using a function of x and z, as desired. '''
 eden = np.zeros((nx, nz), dtype=np.float32, order='F')
@@ -50,17 +49,15 @@ elapsed_time('cat02')
 
 '''========== CODE TO TRACK RAY PROPAGATION IN THE EIKONAL APPROXIMATION ====================='''
 
-print('Setting initial conditions for ray tracker')
-
-print('nrays per beam is ', nrays)
+# print('Setting initial conditions for ray tracker')
+#
+# print('nrays per beam is ', nrays)
 
 '''
 Define the x and z, k_x and k_z, and v_x and v_z arrays to store them for the ray.
 They are the positions, the wavevectors, and the group velocities
 '''
 uray = np.ones(nt, dtype=np.float32, order='F')
-
-injected = 0.0
 
 finalts = np.zeros((nrays, nbeams), dtype=np.int32, order='F')
 
@@ -105,15 +102,12 @@ elapsed_time('cat02')
 
 ''' Begin the loop over rays, to launch multiple rays in different directions from different initial locations. '''
 
-print("Tracking Rays...")
-
-uray_b1 = uray_mult * np.interp(z0, phase_x + offset, pow_x)
+# print("Tracking Rays...")
 
 beam = 0
-print('BEAMNUM is ', beam + 1)
+# print('BEAMNUM is ', beam + 1)
 for n in range(nrays):  # loop over rays
     uray[0] = uray_mult * np.interp(z0[n], phase_x + offset, pow_x)  # determines initial power weighting
-    injected += uray[0]  # monitors total energy injected
     dummy = lr.Ray_XZ(beam, n, uray, boxes, marked, present,
                       x, z, crosses_x, crosses_z, edep, eden, dedendx, dedendz,
                       x0[n], z0[n], kx0[n], kz0[n])
@@ -126,8 +120,8 @@ for n in range(nrays):  # loop over rays
     mysaved_x[:finalt, n, beam] = rayx
     mysaved_z[:finalt, n, beam] = rayz
 
-    if n % 20 == 0:
-        print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
+    # if n % 20 == 0:
+    #     print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
 
     elapsed_time('cat07')
 
@@ -140,10 +134,9 @@ kx0[:nrays] = 0.0
 kz0[:nrays] = 1.0
 
 beam = 1
-print('BEAMNUM is ', beam + 1)
+# print('BEAMNUM is ', beam + 1)
 for n in range(nrays):  # loop over rays
     uray[0] = uray_mult * np.interp(x0[n], phase_x, pow_x)  # determines initial power weighting
-    injected += uray[0]  # monitors total energy injected
     dummy = lr.Ray_XZ(beam, n, uray, boxes, marked, present,
                       x, z, crosses_x, crosses_z, edep, eden, dedendx, dedendz,
                       x0[n], z0[n], kx0[n], kz0[n])
@@ -156,8 +149,8 @@ for n in range(nrays):  # loop over rays
     mysaved_x[:finalt, n, beam] = rayx
     mysaved_z[:finalt, n, beam] = rayz
 
-    if n % 20 == 0:
-        print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
+    # if n % 20 == 0:
+    #     print(f'     ...{int(100 * (1 - (n / nrays)))}% remaining...')
 
     elapsed_time('cat07')
 
@@ -178,7 +171,7 @@ After beam #1, need to start from beam #2 and check for rays from beam #3, then 
 NOTE: Starting from beam #2, do NOT need to re-check for rays from beam #1.
 '''
 
-print("Finding ray intersections with rays from opposing beams.")
+# print("Finding ray intersections with rays from opposing beams.")
 intersections = np.zeros((nx, nz), dtype=np.float32, order='F')
 
 for xx in range(1, nx):  # loops start from 1, the first zone
@@ -202,7 +195,7 @@ for xx in range(1, nx):  # loops start from 1, the first zone
 # Intersection timer
 elapsed_time('cat09')
 
-print('Calculating CBET gains...')
+# print('Calculating CBET gains...')
 
 u_flow = machnum * cs
 
@@ -301,12 +294,12 @@ for bb in range(nbeams - 1):
                         # ENFORCE Energy conservation
                         # W1_new(ix,iz) = W1(ix,iz)-(W2_new(ix,iz)-W2(ix,iz));
                         W1_storage[ix, iz, ray1num] = W1_new[ix, iz]
-        if rr1 % 20 == 0:
-            print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
+        # if rr1 % 20 == 0:
+        #     print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
 
 elapsed_time('cat11')
 
-print("Updating intensities due to CBET gains...")
+# print("Updating intensities due to CBET gains...")
 
 i_b1_new = np.copy(i_b1, order='F')
 i_b2_new = np.copy(i_b2, order='F')
@@ -392,8 +385,8 @@ for bb in range(nbeams - 1):
 
                         x_prev_2 = x_curr_2
                         z_prev_2 = z_curr_2
-        if rr1 % 20 == 0:
-            print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
+        # if rr1 % 20 == 0:
+        #     print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
 
 elapsed_time('cat11')
 
@@ -403,18 +396,21 @@ i_b1_new[i_b1_new < 1.0e-10] = 1.0e-10
 i_b2_new[i_b2_new < 1.0e-10] = 1.0e-10
 a0_variable = 8.53e-10 * np.sqrt(i_b1_new + i_b2_new + 1.0e-10) * (1.053 / 3.0)
 
-plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, variable1, a0_variable)
+# plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, variable1, a0_variable)
 
 '''==================== TIMER REPORTS ============================================================='''
-print("FINISHED!    Reporting ray timings now...")
-print('___________________________________________________________________')
+# print("FINISHED!    Reporting ray timings now...")
+# print('___________________________________________________________________')
 
 elapsed_time('cat10')
-timers['total'] = monotonic() - timers['start']
+
 ray_loop_sum = timers['cat03'] + timers['cat04'] + timers['cat05'] + timers['cat06'] + timers['cat08']
 other_times = 0.0
 for n in range(12):
     other_times += timers[f'cat{n+1:02}']
+
+timers['total'] = monotonic() - timers['start']
+
 others = timers['total'] - other_times
 
 print(f'Data Import:                                {timers["cat01"]:15.8f}\n\
@@ -432,4 +428,3 @@ CBET gain calculations:                     {timers["cat11"]:15.8f}\n\
 Others...:                                  {others:15.8f}\n\
 TOTAL:                                      {timers["total"]:15.8f}')
 print('-------------------------------------------------------------------')
-plt.show()

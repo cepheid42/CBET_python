@@ -1,0 +1,100 @@
+Defaults:
+    beams = 2
+    nx/nz = 201
+    ncrossings = nx * 3
+    Rays per zone = 5
+    nrays =  599
+    numstored = 25
+
+    No print/plot, except for timer outputs.
+
+    Yorick timing:
+        First: 142.655
+            CBET Gain time = 115.75
+            Ray loop sum = 23.41
+
+        Second: 142.424
+            CBET Gain time = 122.08
+            Ray loop sum = 22.96
+
+        Third: 150.509
+            CBET Gain time = 122.544
+            Ray loop sum = 24.33
+
+        Fourth: 151.590
+            CBET Gain time = 123.76
+            Ray loop sum = 24.23
+
+        Fifth: 152.273
+            CBET Gain time = 124.372
+            Ray loop sum = 24.28
+
+    Sequential Python:
+        First: 181.507
+        Second: 170.905
+        Third: 176.170
+        Fourth: 179.539
+        Fifth: 173.46
+
+    MPI Python:
+    Testing Hardware: AMD Ryzen 5 1600 6 core/12 thread
+    No explicit sync
+        2 Processes:
+            First: 91.834
+            Second: 93.26
+            Third: 90.606
+            Fourth: 90.644
+            Fifth: 91.284
+        4 Processes:
+            First: 90.372
+            Second: 91.904
+            Third: 92.09
+            Fourth: 92.246
+            Fifth: 91.504
+        8 Processes:
+            First: 94.947
+            Second: 96.796
+            Third: 102.465
+            Fourth: 100.1997
+            Fifth: 92.157
+        12 Processes:
+            First: 119.515
+            Second: 121.502
+            Third: 120.425
+            Fourth: 120.621
+            Fifth: 121.451
+
+Super High Intensity Testing:
+    beams = 2
+    nx/nz = 401
+    xmin/xmax/zmin/zmax = (+-) 10e-4
+    beam min/max = (+-) 6.0e-4
+    ncrossings = nx * 3
+    rays per zone = 25
+    nrays = 6000
+    numstored = 125
+
+    Yorick:
+        First: Killed after 95 minutes
+
+    Sequential Python:
+        First: 3804.466 seconds
+
+
+
+    nrays + 599 = 1198
+    Yorick:
+        First: 438.722
+            CBET gain time = 384.404
+            Ray loop sum = 46.710
+        Second:
+            CBET gain time = 384.404
+            Ray loop sum = 46.710
+        Third:
+            CBET gain time = 384.404
+            Ray loop sum = 46.710
+
+    Sequential Python:
+        First: 362.357
+        Second: 357.708
+        Third: 359.290
