@@ -1,4 +1,4 @@
-from constants import *
+from seq_constants import *
 import numpy as np
 
 class Ray_XZ:
@@ -21,6 +21,13 @@ class Ray_XZ:
 
         self.wpe = wpe
 
+        self.edep = np.copy(edep)
+        self.boxes = boxes
+        self.marked = marked
+        self.present = present
+        self.crosses_x = crosses_x
+        self.crosses_z = crosses_z
+
         self.marking_x = np.zeros(nt, dtype=int, order='F')
         self.marking_z = np.zeros(nt, dtype=int, order='F')
         self.x_bounds = np.zeros(nt, dtype=np.float32, order='F')
@@ -31,26 +38,24 @@ class Ray_XZ:
         self.my_vx = np.zeros(nt, dtype=np.float32, order='F')
         self.my_vz = np.zeros(nt, dtype=np.float32, order='F')
 
-        self.launch_ray(uray, boxes, marked, present, x, z, edep, crosses_x, crosses_z, dedendx, dedendz)
+        self.launch_ray(uray, x, z, dedendx, dedendz)
 
-    def get_finalt(self):
-        return self.finalt
+    def get_values(self):
+        return self.finalt, self.rayx, self.rayz, self.edep, self.boxes, self.marked, \
+               self.present, self.crosses_x, self.crosses_z
 
-    def get_rayx(self):
-        return self.rayx
 
-    def get_rayz(self):
-        return self.rayz
-
-    def launch_ray(self, uray, boxes, marked, present, x, z, edep, crosses_x, crosses_z, dedendx, dedendz):
+    def launch_ray(self, uray, x, z, dedendx, dedendz):
         for xx in range(nx):
             if ((-0.5 - 1.0e-10) * dx) <= (self.my_x[0] - x[xx, 0]) <= ((0.5 + 1.0e-10) * dx):
                 thisx_0 = xx
+                thisx_00 = xx
                 break  # "breaks" out of the xx loop once the if statement condition is met.
 
         for zz in range(nz):
             if ((-0.5 - 1.0e-10) * dz) <= (self.my_z[0] - z[0, zz]) <= ((0.5 + 1.0e-10) * dz):
                 thisz_0 = zz
+                thisz_00 = zz
                 break  # "breaks" out of the zz loop once the if statement condition is met.
 
         k = np.sqrt((omega ** 2 - self.wpe[thisx_0, thisz_0] ** 2) / c ** 2)
@@ -70,13 +75,16 @@ class Ray_XZ:
 
         numcrossing = 1
 
+        '''Begin the loop in time, where dt is the time step and each ray will be advanced in x and vg'''
         for tt in range(1, nt):
+
             self.my_vz[tt] = self.my_vz[tt - 1] - (c ** 2) / (2.0 * ncrit) * dedendz[thisx_0, thisz_0] * dt
             self.my_vx[tt] = self.my_vx[tt - 1] - (c ** 2) / (2.0 * ncrit) * dedendx[thisx_0, thisz_0] * dt
 
             self.my_x[tt] = self.my_x[tt - 1] + self.my_vx[tt] * dt
             self.my_z[tt] = self.my_z[tt - 1] + self.my_vz[tt] * dt
 
+            '''============== Update the index, and track the intersections and boxes ================'''
             search_index_x = 1  # Use nx for original (whole mesh) search
             search_index_z = 1  # Use nz for original (whole mesh) search
 
@@ -112,11 +120,12 @@ class Ray_XZ:
                 if (self.my_x[tt] > currx >= self.my_x[tt - 1]) or (self.my_x[tt] < currx <= self.my_x[tt - 1]):
                     crossx = np.interp(currx, linex, linez)
                     if abs(crossx - lastz) > 1.0e-20:
-                        crosses_x[self.raynum, numcrossing] = currx
-                        crosses_z[self.raynum, numcrossing] = crossx
+                        # self.ints[self.beam, self.raynum, numcrossing] = uray[tt]
+                        self.crosses_x[self.raynum, numcrossing] = currx
+                        self.crosses_z[self.raynum, numcrossing] = crossx
 
                         if (xmin - dx / 2) <= self.my_x[tt] <= (xmax + dx / 2):
-                            boxes[self.raynum, numcrossing, :] = [thisx, thisz]
+                            self.boxes[self.raynum, numcrossing, :] = [thisx, thisz]
 
                         lastx = currx
                         numcrossing += 1
@@ -127,12 +136,14 @@ class Ray_XZ:
                 if (self.my_z[tt] > currz >= self.my_z[tt - 1]) or (self.my_z[tt] < currz <= self.my_z[tt - 1]):
                     crossz = np.interp(currz, linez, linex)
                     if abs(crossz - lastx) > 1.0e-20:
-                        crosses_x[self.raynum, numcrossing] = crossz
-                        crosses_z[self.raynum, numcrossing] = currz
+                        # self.ints[self.beam, self.raynum, numcrossing] = uray[tt]
+                        self.crosses_x[self.raynum, numcrossing] = crossz
+                        self.crosses_z[self.raynum, numcrossing] = currz
 
                         if (zmin - dz / 2) <= self.my_z[tt] <= (zmax + dz / 2):
-                            boxes[self.raynum, numcrossing, :] = [thisx, thisz]
+                            self.boxes[self.raynum, numcrossing, :] = [thisx, thisz]
 
+                        lastz = currz   # This keeps track of the last z-value added, so that we don't double-count the corners
                         numcrossing += 1
                         break
 
@@ -164,9 +175,9 @@ class Ray_XZ:
                 self.z_bounds_double[tt] = ztarg
 
                 for ss in range(numstored):
-                    if marked[thisx, thisz, ss] == 0:
-                        marked[thisx, thisz, ss] = self.raynum
-                        present[thisx, thisz] += 1.0
+                    if self.marked[thisx, thisz, ss] == 0:
+                        self.marked[thisx, thisz, ss] = self.raynum
+                        self.present[thisx, thisz] += 1.0
                         break
 
             elif self.marking_z[tt] != self.marking_z[tt - 1]:
@@ -181,9 +192,9 @@ class Ray_XZ:
                 self.z_bounds[tt] = ztarg
 
                 for ss in range(numstored):
-                    if marked[thisx, thisz, ss] == 0:
-                        marked[thisx, thisz, ss] = self.raynum
-                        present[thisx, thisz] += 1.0
+                    if self.marked[thisx, thisz, ss] == 0:
+                        self.marked[thisx, thisz, ss] = self.raynum
+                        self.present[thisx, thisz] += 1.0
                         break
 
             elif self.marking_x[tt] != self.marking_x[tt - 1]:
@@ -198,9 +209,9 @@ class Ray_XZ:
                 self.z_bounds[tt] = ztarg
 
                 for ss in range(numstored):
-                    if marked[thisx, thisz, ss] == 0:
-                        marked[thisx, thisz, ss] = self.raynum
-                        present[thisx, thisz] += 1.0
+                    if self.marked[thisx, thisz, ss] == 0:
+                        self.marked[thisx, thisz] = self.raynum
+                        self.present[thisx, thisz] += 1.0
                         break
 
             uray[tt] = uray[tt - 1]
@@ -217,10 +228,10 @@ class Ray_XZ:
                 a3 = dl * (1.0 - dm)  # yellow : (x, z+1)
                 a4 = dl * dm  # red : (x+1, z+1)
 
-                edep[thisx + 1, thisz + 1] += a1 * increment  # blue
-                edep[thisx + 1 + 1, thisz + 1] += a2 * increment  # green
-                edep[thisx + 1, thisz + 1 + 1] += a3 * increment  # yellow
-                edep[thisx + 1 + 1, thisz + 1 + 1] += a4 * increment  # red
+                self.edep[thisx + 1, thisz + 1] += a1 * increment # blue
+                self.edep[thisx + 1 + 1, thisz + 1] += a2 * increment  # green
+                self.edep[thisx + 1, thisz + 1 + 1] += a3 * increment  # yellow
+                self.edep[thisx + 1 + 1, thisz + 1 + 1] += a4 * increment  # red
             elif xp < 0 and zp >= 0:
                 dl = zp
                 dm = abs(xp)
@@ -229,10 +240,10 @@ class Ray_XZ:
                 a3 = dl * (1.0 - dm)  # yellow : (x, z+1)
                 a4 = dl * dm  # red : (x-1, z+1)
 
-                edep[thisx + 1, thisz + 1] += a1 * increment  # blue
-                edep[thisx + 1 - 1, thisz + 1] += a2 * increment  # green
-                edep[thisx + 1, thisz + 1 + 1] += a3 * increment  # yellow
-                edep[thisx + 1 - 1, thisz + 1 + 1] += a4 * increment  # red
+                self.edep[thisx + 1, thisz + 1] += a1 * increment  # blue
+                self.edep[thisx + 1 - 1, thisz + 1] += a2 * increment  # green
+                self.edep[thisx + 1, thisz + 1 + 1] += a3 * increment  # yellow
+                self.edep[thisx + 1 - 1, thisz + 1 + 1] += a4 * increment  # red
             elif xp >= 0 and zp < 0:
                 dl = abs(zp)
                 dm = xp
@@ -241,10 +252,10 @@ class Ray_XZ:
                 a3 = dl * (1.0 - dm)  # yellow : (x, z-1)
                 a4 = dl * dm  # red : (x+1, z-1)
 
-                edep[thisx + 1, thisz + 1] += a1 * increment  # blue
-                edep[thisx + 1 + 1, thisz + 1] += a2 * increment  # green
-                edep[thisx + 1, thisz + 1 - 1] += a3 * increment  # yellow
-                edep[thisx + 1 + 1, thisz + 1 - 1] += a4 * increment  # red
+                self.edep[thisx + 1, thisz + 1] += a1 * increment  # blue
+                self.edep[thisx + 1 + 1, thisz + 1] += a2 * increment  # green
+                self.edep[thisx + 1, thisz + 1 - 1] += a3 * increment  # yellow
+                self.edep[thisx + 1 + 1, thisz + 1 - 1] += a4 * increment  # red
             elif xp < 0 and zp < 0:
                 dl = abs(zp)
                 dm = abs(xp)
@@ -252,29 +263,24 @@ class Ray_XZ:
                 a2 = (1.0 - dl) * dm  # green : (x-1, z)
                 a3 = dl * (1.0 - dm)  # yellow : (x, z-1)
                 a4 = dl * dm  # red : (x-1, z-1)
-
-                edep[thisx + 1, thisz + 1] += a1 * increment  # blue
-                edep[thisx + 1 - 1, thisz + 1] += a2 * increment  # green
-                edep[thisx + 1, thisz + 1 - 1] += a3 * increment  # yellow
-                edep[thisx + 1 - 1, thisz + 1 - 1] += a4 * increment  # red
+                self.edep[thisx + 1, thisz + 1] += a1 * increment  # blue
+                self.edep[thisx + 1 - 1, thisz + 1] += a2 * increment  # green
+                self.edep[thisx + 1, thisz + 1 - 1] += a3 * increment  # yellow
+                self.edep[thisx + 1 - 1, thisz + 1 - 1] += a4 * increment  # red
             else:
                 print(f'xp is {xp}, zp is {zp}')
-                # edep[thisx, thisz, self.beam] += (self.nuei[tt] * (eden[thisx, thisz] / ncrit) * uray[tt - 1] * dt)
+                # self.edep[thisx, thisz, self.beam] += (self.nuei[tt] * (eden[thisx, thisz] / ncrit) * uray[tt - 1] * dt)
                 print('***** ERROR in interpolation of laser deposition grid!! *****')
                 break
 
-
-            # print(f'{tt} edep: {edep}')
-
+            # This will cause the code to stop following the ray once it escapes the extent of the plasma
             if self.my_x[tt] < (xmin - (dx / 2.0)) or self.my_x[tt] > (xmax + (dx / 2.0)):
                 self.finalt = tt - 1
                 self.rayx = self.my_x[:self.finalt]
                 self.rayz = self.my_z[:self.finalt]
-                # elapsed_time('cat02')
                 break  # "breaks" out of the tt loop once the if condition is satisfied
             elif self.my_z[tt] < (zmin - (dz / 2.0)) or self.my_z[tt] > (zmax + (dz / 2.0)):
                 self.finalt = tt - 1
                 self.rayx = self.my_x[:self.finalt]
                 self.rayz = self.my_z[:self.finalt]
-                # elapsed_time('cat02')
                 break  # "breaks" out of the tt loop once the if condition is satisfied

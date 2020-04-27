@@ -1,5 +1,5 @@
-from linear_constants import *
-import linear_ray_launch as lr
+from seq_constants import *
+import seq_ray_launch as lr
 # from plotter import plot_everything
 
 import numpy as np
@@ -215,9 +215,6 @@ W1_new = np.copy(W1_init, order='F')
 W2_init = np.copy(W2, order='F')
 W2_new = np.copy(W2_init, order='F')
 
-W1_storage = np.zeros((nx, nz, numstored), dtype=np.float32, order='F')
-W2_storage = np.zeros((nx, nz, numstored), dtype=np.float32, order='F')
-
 elapsed_time('cat02')
 # The PROBE beam gains (loses) energy when gain2 < 0  (>0)
 # The PUMP beam loses (gains) energy when gain2 < 0  (>0)
@@ -276,24 +273,17 @@ for bb in range(nbeams - 1):
                     eta = ((omega2 - omega1) - (kx2 - kx1) * u_flow[ix, iz]) / (ws + 1.0e-10)
 
                     efield1 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b1[ix, iz] / c)  # initial electric field of ray
-                    efield2 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b2[ix, iz] / c)  # initial electric field of ray
+                    # efield2 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b2[ix, iz] / c)  # initial electric field of ray
 
                     P = (iaw ** 2 * eta) / ((eta ** 2 - 1.0) ** 2 + iaw ** 2 * eta ** 2)  # from Russ's paper
-                    gain1 = constant1 * efield2 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
                     gain2 = constant1 * efield1 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
 
                     # new energy of crossing (PROBE) ray (beam 2)
                     if dkmag[bb + 1, rr2[n2], cc2[n2]] >= 1.0 * dx:
                         W2_new[ix, iz] = W2[ix, iz] * np.exp(-1 * W1[ix, iz] * dkmag[bb + 1, rr2[n2], cc2[n2]] * gain2 / np.sqrt(epsilon))
-                        W2_storage[ix, iz, n2] = W2_new[ix, iz]
 
-                        # new energy of primary (PUMP) ray (beam 1)
-                        # USE W1_new formula
                         W1_new[ix, iz] = W1[ix, iz] * np.exp(1 * W2[ix, iz] * dkmag[bb, rr1, cc1] * gain2 / np.sqrt(epsilon))
 
-                        # ENFORCE Energy conservation
-                        # W1_new(ix,iz) = W1(ix,iz)-(W2_new(ix,iz)-W2(ix,iz));
-                        W1_storage[ix, iz, ray1num] = W1_new[ix, iz]
         # if rr1 % 20 == 0:
         #     print(f'     ...{int(100 * (1 - (rr1 / nrays)))}%  remaining...')
 

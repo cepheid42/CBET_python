@@ -1,7 +1,7 @@
 from mpi4py import MPI
 
-from constants import *
-import launch_ray as lr
+from mpi_constants import *
+import mpi_launch_ray as lr
 from plotter import plot_everything
 
 import numpy as np
@@ -300,7 +300,7 @@ for bb in range(nbeams - 1):
                     efield2 = np.sqrt(8.0 * np.pi * 1.0e7 * i_b2[ix, iz] / c)  # initial electric field of ray
 
                     P = (iaw ** 2 * eta) / ((eta ** 2 - 1.0) ** 2 + iaw ** 2 * eta ** 2)  # from Russ's paper
-                    gain1 = constant1 * efield2 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
+                    # gain1 = constant1 * efield2 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
                     gain2 = constant1 * efield1 ** 2 * (ne / ncrit) * (1 / iaw) * P  # L^-1 from Russ's paper
 
                     if dkmag[bb + 1, rr2[n2], cc2[n2]] >= 1.0 * dx:

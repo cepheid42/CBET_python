@@ -9,7 +9,7 @@ And we update the ray positions (x) and group velocities (vg) according to
 d(x)/dt = vg, and
 d(vg)/dt = -c^2/2*(gradient(eden)/ncrit)
 ============================================================================================'''
-from linear_constants import *
+from seq_constants import *
 import numpy as np
 
 class Ray_XZ:
