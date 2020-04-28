@@ -32,7 +32,7 @@ Introduction
     array with an index of 0, the last element of the array is retrieved. Indexing with a -1 returns the second to last.
     Python on the other hand, since it has zero based arrays, returns the last element when sliced with a -1 index.
 
-Experiments
+Design
    The first step in the process was to transcribe the code from Yorick to Python. Initially, I thought to utilize Pytorch
    instead of numpy. The reason for this was Pytorch functions much like Numpy in regards to arrays, with the added benefit
    of also having built-in GPU functionality.  Although much of the code was initially written with the Pytorch library,
@@ -122,3 +122,80 @@ Experiments
    crossings by a ray (set in the initialization parameters). Since the beams loop was actually negligible (since Beams - 1 = 1,
    the loop was only iterate once), the Rays loop was set up so each process began iterating at its rank, so rank 0 would
    calculate the 0th iteration, rank 1 the 1st iteration, and so forth in steps of SIZE, which is the total number of processes.
+   The second CBET Gain calculation loop also was setup in this manner.
+
+   For thorough comparison I also modified the code to run using Python's "multiprocessing" library. This library operates
+   similarly to the OpenMP library available for C. The multiprocessing library allows for creation of "thread pools"
+   which can run a single function as a thread. For this to work, the ray launch loop and the gain calculation loops were
+   made into functions. These functions were then passed a large list of data containing all the variables and values needed
+   to perform the computation. The downside to the multiprocessing library is that it does not have the ability to share
+   multidimensional arrays or Numpy arrays in memory. Instead each array must be passed as an explicit argument to the function.
+
+   This had the obvious side effect of creating a massive memory overhead to store many copies of many different arrays and
+   caused the program to randomly fail when memory usage exceeded some limit. In order to overcome this, rudimentary memory
+   management was used by removing pointers to arrays and parameter lists when they were no longer needed (by reassigning
+   variables to None, allowing the garbage collector to remove the data).
+
+Experiments
+
+    All tests were done on my home desktop which has a AMD Ryzen 5 1600 6 core/12 thread cpu and 16 Gb of memory.
+
+    Testing larger number of processes were done on the Node2x18a computer at UR. Due to the inability to install Yorick
+    on this computer, it was not tested.
+
+    I tested all four versions of the program (Yorick, Sequential, MPI, Pool) with several different starting parameters and
+    timed the whole program from start to finish. The different starting parameters were the default values, doubling the default
+    values, and doubling only the number of rays.
+
+    The default values for the first test are as follows:
+        beams = 2
+        nx/nz = 201
+        ncrossings = nx * 3
+        Rays per zone = 5
+        nrays =  599
+        numstored = 25
+        x/z min/max = +- 5.0e-4
+        beam min/max = +- 3.0e-4
+
+    To test on a much more difficult scenario the following values were used (High Intensity Testing):
+        beams = 2
+        nx/nz = 401
+        ncrossings = nx * 3
+        rays per zone = 25
+        nrays = 6000
+        numstored = 125
+        x/z min/max = +- 10.0e-4
+        beam min/max = +- 6.0e-4
+
+    Lastly, the default values were used but the number of rays was doubled (nrays = 1198).
+
+    The Yorick program ran consistently at a mean time of 147.8902s and a standard deviation 4.9255s. This is the baseline
+    time against which the other programs were compared against.
+
+    Plots and Plots and Plots
+
+
+Results:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

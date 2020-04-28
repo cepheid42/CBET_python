@@ -2,7 +2,7 @@ from mpi4py import MPI
 
 from mpi_constants import *
 import mpi_launch_ray as lr
-from plotter import plot_everything
+# from plotter import plot_everything
 
 import numpy as np
 from time import monotonic
@@ -460,7 +460,7 @@ if rank == 0:
     i_b2_new[i_b2_new < 1.0e-10] = 1.0e-10
     a0_variable = 8.53e-10 * np.sqrt(i_b1_new + i_b2_new + 1.0e-10) * (1.053 / 3.0)
 
-    plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, variable1, a0_variable)
+    # plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, variable1, a0_variable)
 
     '''==================== TIMER REPORTS ============================================================='''
     print("FINISHED!    Reporting ray timings now...")

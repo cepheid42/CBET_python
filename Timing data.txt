@@ -7,27 +7,16 @@ Defaults:
     numstored = 25
 
     No print/plot, except for timer outputs.
+    Testing Hardware: AMD Ryzen 5 1600 6 core/12 thread
+    No explicit sync
 
     Yorick timing:
         First: 142.655
-            CBET Gain time = 115.75
-            Ray loop sum = 23.41
-
         Second: 142.424
-            CBET Gain time = 122.08
-            Ray loop sum = 22.96
-
         Third: 150.509
-            CBET Gain time = 122.544
-            Ray loop sum = 24.33
-
         Fourth: 151.590
-            CBET Gain time = 123.76
-            Ray loop sum = 24.23
-
         Fifth: 152.273
-            CBET Gain time = 124.372
-            Ray loop sum = 24.28
+        mean = 147.8902 +- 4.9255
 
     Sequential Python:
         First: 181.507
@@ -35,34 +24,97 @@ Defaults:
         Third: 176.170
         Fourth: 179.539
         Fifth: 173.46
+        mean = 179.3162 +- 4.324
 
     MPI Python:
-    Testing Hardware: AMD Ryzen 5 1600 6 core/12 thread
-    No explicit sync
         2 Processes:
             First: 91.834
             Second: 93.26
             Third: 90.606
             Fourth: 90.644
             Fifth: 91.284
+            mean = 91.5256 +- 1.0937
+
         4 Processes:
             First: 90.372
             Second: 91.904
             Third: 92.09
             Fourth: 92.246
             Fifth: 91.504
+            mean = 91.6232 +- 0.7524
+
+        6 Processes:
+            First: 91.93
+            Second: 91.607
+            Third: 91.985
+            Fourth: 93.541
+            Fifth: 91.758
+            mean = 92.1642 +- 0.7839
+
         8 Processes:
             First: 94.947
             Second: 96.796
             Third: 102.465
             Fourth: 100.1997
             Fifth: 92.157
+            mean = 97.3129 +- 3.6695
+
         12 Processes:
             First: 119.515
             Second: 121.502
             Third: 120.425
             Fourth: 120.621
             Fifth: 121.451
+            mean = 120.7034 +- 0.8205
+
+    Pool Python:
+        1 Process:
+            First: 210.394
+            Second: 210.014
+            Third: 209.364
+            Fourth: 207.062
+            Fifth: 206.472
+            mean = 208.661 +- 1.780
+
+        2 Processes:
+            First: 115.438
+            Second: 114.659
+            Third: 113.222
+            Fourth: 111.928
+            Fifth: 113.187
+            mean = 113.6868 +- 1.3759
+
+        4 Processes:
+            First: 65.412
+            Second: 64.587
+            Third: 65.109
+            Fourth: 65.376
+            Fifth: 64.465
+            mean = 64.9898 +- 0.4414
+
+        6 Processes:
+            First: 51.501
+            Second: 50.741
+            Third: 50.717
+            Fourth: 50.971
+            Fifth: 50.131
+            mean = 50.8122 +- 0.04944
+
+        8 Processes:
+            First: 47.193
+            Second: 47.793
+            Third: 47.422
+            Fourth: 47.466
+            Fifth: 47.786
+            mean = 47.532 +- 0.257
+
+        12 Processes:
+            First: 47.201
+            Second: 47.810
+            Third: 47.597
+            Fourth: 47.856
+            Fifth: 46.992
+            mean = 47.4912 +- 0.3806
 
 Super High Intensity Testing:
     beams = 2
@@ -80,21 +132,30 @@ Super High Intensity Testing:
     Sequential Python:
         First: 3804.466 seconds
 
+    MPI Python:
+        4 processes: 2120.566
 
+    Pool Python:
+        n processes: Requires to much memory, won't run
 
     nrays + 599 = 1198
     Yorick:
         First: 438.722
-            CBET gain time = 384.404
-            Ray loop sum = 46.710
-        Second:
-            CBET gain time = 384.404
-            Ray loop sum = 46.710
-        Third:
-            CBET gain time = 384.404
-            Ray loop sum = 46.710
+        Second: 430.599
+        Third: 419.326
+        mean = 429.549 +- 9.741
 
     Sequential Python:
         First: 362.357
         Second: 357.708
         Third: 359.290
+        mean = 359.785 +- 2.364
+
+    MPI Python:
+        First: 194.414
+        Second: 195.023
+        Third: 194.608
+        mean = 194.6817 +- 0.3111
+
+    Pool Python:
+        First: Requires to much memory, won't run

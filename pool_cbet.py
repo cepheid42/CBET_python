@@ -8,7 +8,7 @@ import pool_ray_launch as lr
 
 start_time = monotonic()
 
-num_procs = 2 # mp.cpu_count()
+num_procs = 4
 
 dedendz = np.zeros((nx, nz), dtype=np.float32, order='F')
 dedendx = np.zeros((nx, nz), dtype=np.float32, order='F')
@@ -265,6 +265,9 @@ with mp.Pool(processes=num_procs) as pool:
 
     results0 = pool.starmap(lunch_ray, params0)
 
+    uray_n0 = None
+    params0 = None
+
     # Extract results and assign them to correct arrays
     for n, val in enumerate(results0):
         finalt, rayx, rayz, edep_b, boxes_b, marked_b, present_b, crossesx_b, crossesz_b = val
@@ -279,8 +282,6 @@ with mp.Pool(processes=num_procs) as pool:
         crosses_z[0, :, :] = crossesz_b
 
     # clean up
-    uray_n0 = None
-    params0 = None
     results0 = None
 
     # Reset for next beam
@@ -298,6 +299,9 @@ with mp.Pool(processes=num_procs) as pool:
 
     results1 = pool.starmap(lunch_ray, params1)
 
+    uray_n1 = None
+    params1 = None
+
     # Extract results and assign them to correct arrays
     for n, val in enumerate(results1):
         finalt, rayx, rayz, edep_b, boxes_b, marked_b, present_b, crossesx_b, crossesz_b = val
@@ -311,9 +315,11 @@ with mp.Pool(processes=num_procs) as pool:
         crosses_x[1, :, :] = crossesx_b
         crosses_z[1, :, :] = crossesz_b
 
-    uray_n1 = None
-    params1 = None
+
     results1 = None
+    dedendx = None
+    dedendz = None
+
 
     i_b1 = np.copy(edep[:nx, :nz, 0], order='F')
     i_b2 = np.copy(edep[:nx, :nz, 1], order='F')
@@ -339,6 +345,9 @@ with mp.Pool(processes=num_procs) as pool:
     dkz = crosses_z[:, :, 1:] - crosses_z[:, :, :-1]
     dkmag = np.sqrt(dkx ** 2 + dkz ** 2)
 
+    crosses_x = None
+    crosses_z = None
+
     W1 = np.sqrt(1 - eden / ncrit) / rays_per_zone
     W2 = np.sqrt(1 - eden / ncrit) / rays_per_zone
 
@@ -354,6 +363,7 @@ with mp.Pool(processes=num_procs) as pool:
     params2 = [(n, ncrossings, boxes, marked, present, intersections, dkx, dkz, dkmag, W1, W2, i_b1, eden) for n in range(nrays)]
 
     results2 = pool.starmap(first_calc, params2)
+    params2 = None
 
     for n, ray in enumerate(results2):
         for i in ray[0]:  # W1_new_b
@@ -364,18 +374,22 @@ with mp.Pool(processes=num_procs) as pool:
             val, ix, iz = j
             W2_new[ix, iz] = val
 
-    params2 = None
     results2 = None
+    dkx = None
+    dkz = None
+    dkmag = None
+
 
     params3 = [(n, ncrossings, boxes, marked, intersections, W1_new, W2_new, W1_init, W2_init, i_b1, i_b2, x, z) for n in range(nrays)]
 
     results3 = pool.starmap(second_calc, params3)
 
+    params3 = None
+
     for n, ray in enumerate(results3):
         i_b1_new += ray[0]
         i_b2_new += ray[1]
 
-    params3 = None
     results3 = None
 
 
