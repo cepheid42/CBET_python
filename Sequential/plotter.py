@@ -80,4 +80,4 @@ def plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, va
     plt.ylabel('a0')
     plt.title('a0(z) at x_min, x_0, x_max')
     plt.grid(linestyle='--')
-    plt.show()
+    plt.show(block=True)

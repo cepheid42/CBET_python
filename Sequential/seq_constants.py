@@ -48,7 +48,7 @@ rays_per_zone = 5
 beam_max_z = 3.0e-4
 beam_min_z = -3.0e-4
 
-nrays = int(rays_per_zone * (beam_max_z - beam_min_z) / dz)
+nrays = 99 #int(rays_per_zone * (beam_max_z - beam_min_z) / dz)
 
 numstored = int(5 * rays_per_zone)  # max number of rays stored per zone
 
