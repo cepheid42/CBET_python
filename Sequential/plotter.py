@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from mpi_constants import *
+from seq_constants import *
 from numpy import max as npmax
 
 def plot_everything(z, x, eden, mysaved_x, mysaved_z, finalts, intensity_sum, variable1, a0_variable):
