@@ -8,8 +8,8 @@ import numpy as np
 dedendz = np.zeros((nx, nz), dtype=np.float32, order='F')    # Backwards, because it is transposed later
 dedendx = np.zeros((nx, nz), dtype=np.float32, order='F')
 
-edep_x = np.zeros((nx + 2, nz + 2), dtype=np.float32, order='F')
-edep_z = np.zeros((nx + 2, nz + 2), dtype=np.float32, order='F')
+# edep_x = np.zeros((nx + 2, nz + 2), dtype=np.float32, order='F')
+# edep_z = np.zeros((nx + 2, nz + 2), dtype=np.float32, order='F')
 
 edep = np.zeros((nx + 2, nz + 2, nbeams), dtype=np.float32, order='F')
 
@@ -43,7 +43,7 @@ for xx in range(nx - 1):
         dedendx[xx, zz] = (eden[xx + 1, zz] - eden[xx, zz]) / (x[xx + 1, zz] - x[xx, zz])
 
 dedendz[:, nz - 1] = dedendz[:, nz - 2]  # sets last column equal to second to last column
-dedendx[nx - 1, :] = dedendz[nx - 2, :]  # sets last row equal to second to last row
+dedendx[nx - 1, :] = dedendx[nx - 2, :]  # sets last row equal to second to last row
 
 elapsed_time('cat02')
 
